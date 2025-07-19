@@ -3,9 +3,10 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Navigation, AlertTriangle } from 'lucide-react';
+import { Navigation, AlertTriangle, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import SearchInput from './SearchInput';
+import OptimizationPanel from './OptimizationPanel';
 
 interface TrafficMapProps {
   mapboxToken: string;
@@ -28,6 +29,8 @@ const TrafficMap: React.FC<TrafficMapProps> = ({ mapboxToken }) => {
   const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
   const [destination, setDestination] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showOptimization, setShowOptimization] = useState(false);
+  const userMarker = useRef<mapboxgl.Marker | null>(null);
   const { toast } = useToast();
 
   // Initialize map
@@ -46,43 +49,49 @@ const TrafficMap: React.FC<TrafficMapProps> = ({ mapboxToken }) => {
 
     // Add traffic layer
     map.current.on('load', () => {
-      map.current?.addSource('mapbox-traffic', {
-        type: 'vector',
-        url: 'mapbox://mapbox.mapbox-traffic-v1',
-      });
+      // Check if traffic source already exists
+      if (!map.current?.getSource('mapbox-traffic')) {
+        map.current?.addSource('mapbox-traffic', {
+          type: 'vector',
+          url: 'mapbox://mapbox.mapbox-traffic-v1',
+        });
+      }
 
-      map.current?.addLayer({
-        id: 'traffic',
-        type: 'line',
-        source: 'mapbox-traffic',
-        'source-layer': 'traffic',
-        paint: {
-          'line-width': [
-            'case',
-            ['==', 'low', ['get', 'congestion']],
-            3,
-            ['==', 'moderate', ['get', 'congestion']],
-            3,
-            ['==', 'heavy', ['get', 'congestion']],
-            3,
-            ['==', 'severe', ['get', 'congestion']],
-            3,
-            1
-          ],
-          'line-color': [
-            'case',
-            ['==', 'low', ['get', 'congestion']],
-            'hsl(var(--traffic-free))',
-            ['==', 'moderate', ['get', 'congestion']],
-            'hsl(var(--traffic-light))',
-            ['==', 'heavy', ['get', 'congestion']],
-            'hsl(var(--traffic-moderate))',
-            ['==', 'severe', ['get', 'congestion']],
-            'hsl(var(--traffic-heavy))',
-            'hsl(var(--traffic-free))'
-          ]
-        }
-      });
+      // Check if traffic layer already exists
+      if (!map.current?.getLayer('traffic')) {
+        map.current?.addLayer({
+          id: 'traffic',
+          type: 'line',
+          source: 'mapbox-traffic',
+          'source-layer': 'traffic',
+          paint: {
+            'line-width': [
+              'case',
+              ['==', 'low', ['get', 'congestion']],
+              3,
+              ['==', 'moderate', ['get', 'congestion']],
+              3,
+              ['==', 'heavy', ['get', 'congestion']],
+              3,
+              ['==', 'severe', ['get', 'congestion']],
+              3,
+              1
+            ],
+            'line-color': [
+              'case',
+              ['==', 'low', ['get', 'congestion']],
+              'hsl(var(--traffic-free))',
+              ['==', 'moderate', ['get', 'congestion']],
+              'hsl(var(--traffic-light))',
+              ['==', 'heavy', ['get', 'congestion']],
+              'hsl(var(--traffic-moderate))',
+              ['==', 'severe', ['get', 'congestion']],
+              'hsl(var(--traffic-heavy))',
+              'hsl(var(--traffic-free))'
+            ]
+          }
+        });
+      }
     });
 
     // Add navigation controls
@@ -96,8 +105,11 @@ const TrafficMap: React.FC<TrafficMapProps> = ({ mapboxToken }) => {
           setUserLocation(coords);
           map.current?.setCenter(coords);
           
-          // Add user location marker
-          new mapboxgl.Marker({ color: 'hsl(var(--primary))' })
+          // Add user location marker with ref for cleanup
+          userMarker.current = new mapboxgl.Marker({ 
+            color: 'hsl(var(--primary))',
+            className: 'user-location-marker'
+          })
             .setLngLat(coords)
             .addTo(map.current!);
         },
@@ -202,10 +214,28 @@ const TrafficMap: React.FC<TrafficMapProps> = ({ mapboxToken }) => {
   const displayRoutes = (routeData: RouteData[]) => {
     if (!map.current) return;
 
-    // Clear existing routes
+    console.log('Displaying routes:', routeData); // Debug log
+
+    // Clear existing routes and markers
     if (map.current.getSource('routes')) {
       map.current.removeLayer('routes');
       map.current.removeSource('routes');
+    }
+
+    // Remove existing destination marker
+    const existingMarkers = document.querySelectorAll('.mapboxgl-marker');
+    existingMarkers.forEach(marker => {
+      if (!marker.classList.contains('user-location-marker')) {
+        marker.remove();
+      }
+    });
+
+    // Add destination marker
+    if (routeData.length > 0) {
+      const lastCoord = routeData[0].geometry.coordinates[routeData[0].geometry.coordinates.length - 1];
+      new mapboxgl.Marker({ color: 'hsl(var(--destructive))' })
+        .setLngLat(lastCoord)
+        .addTo(map.current!);
     }
 
     // Add route data
@@ -240,6 +270,12 @@ const TrafficMap: React.FC<TrafficMapProps> = ({ mapboxToken }) => {
           ['==', ['get', 'routeIndex'], selectedRouteIndex],
           'hsl(var(--primary))',
           'hsl(var(--muted-foreground))'
+        ],
+        'line-opacity': [
+          'case',
+          ['==', ['get', 'routeIndex'], selectedRouteIndex],
+          1,
+          0.7
         ]
       }
     });
@@ -283,6 +319,81 @@ const TrafficMap: React.FC<TrafficMapProps> = ({ mapboxToken }) => {
     }
   };
 
+  // Handle optimized route from optimization panel
+  const handleOptimizedRoute = (coordinates: [number, number][], waypoints: string[]) => {
+    if (!map.current) return;
+
+    console.log('Displaying optimized route:', coordinates, waypoints);
+
+    // Clear existing routes
+    if (map.current.getSource('routes')) {
+      map.current.removeLayer('routes');
+      map.current.removeSource('routes');
+    }
+
+    // Create optimized route data
+    const optimizedRoute: RouteData = {
+      geometry: {
+        type: 'LineString',
+        coordinates: coordinates
+      },
+      duration: 0, // Will be calculated by optimization API
+      distance: 0, // Will be calculated by optimization API
+      congestion: [],
+      hasTraffic: false,
+      trafficLevel: 'free'
+    };
+
+    // Add route data
+    map.current.addSource('routes', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          properties: { 
+            routeIndex: 0,
+            trafficLevel: 'free',
+            isOptimized: true
+          },
+          geometry: optimizedRoute.geometry
+        }]
+      }
+    });
+
+    map.current.addLayer({
+      id: 'routes',
+      type: 'line',
+      source: 'routes',
+      paint: {
+        'line-width': 6,
+        'line-color': 'hsl(var(--primary))',
+        'line-opacity': 1
+      }
+    });
+
+    // Add waypoint markers
+    coordinates.forEach((coord, index) => {
+      if (index === 0) return; // Skip user location
+      new mapboxgl.Marker({ 
+        color: index === coordinates.length - 1 ? 'hsl(var(--destructive))' : 'hsl(var(--traffic-light))'
+      })
+        .setLngLat(coord)
+        .addTo(map.current!);
+    });
+
+    // Fit map to route bounds
+    const bounds = new mapboxgl.LngLatBounds();
+    coordinates.forEach((coord: [number, number]) => {
+      bounds.extend(coord);
+    });
+    map.current.fitBounds(bounds, { padding: 100 });
+
+    // Clear normal routes and close optimization panel
+    setRoutes([]);
+    setShowOptimization(false);
+  };
+
   return (
     <div className="relative h-screen w-full">
       {/* Map container */}
@@ -290,12 +401,35 @@ const TrafficMap: React.FC<TrafficMapProps> = ({ mapboxToken }) => {
       
       {/* Route input panel */}
       <Card className="absolute top-4 left-4 right-4 bg-glass-bg backdrop-blur-md border-glass-border p-4">
-        <SearchInput 
-          mapboxToken={mapboxToken}
-          onDestinationSelect={getRoutes}
-          isLoading={isLoading}
-        />
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <SearchInput 
+              mapboxToken={mapboxToken}
+              onDestinationSelect={getRoutes}
+              isLoading={isLoading}
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowOptimization(!showOptimization)}
+            className="bg-background/50 hover:bg-accent"
+          >
+            <Zap className="h-4 w-4" />
+          </Button>
+        </div>
       </Card>
+
+      {/* Optimization panel */}
+      {showOptimization && (
+        <Card className="absolute top-20 left-4 right-4 bg-glass-bg backdrop-blur-md border-glass-border">
+          <OptimizationPanel
+            mapboxToken={mapboxToken}
+            userLocation={userLocation}
+            onOptimizedRoute={handleOptimizedRoute}
+          />
+        </Card>
+      )}
 
       {/* Route options */}
       {routes.length > 0 && (
