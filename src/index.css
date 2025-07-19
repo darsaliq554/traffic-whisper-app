@@ -2,41 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Smart Traffic Monitor Design System - Navigation App Theme */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Base colors for navigation app */
+    --background: 220 13% 18%;
+    --foreground: 210 40% 98%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 220 13% 16%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 220 13% 16%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 222.2 47.4% 11.2%;
+    /* Navigation primary (map blue) */
+    --primary: 214 84% 56%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 220 13% 23%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 13% 23%;
+    --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 220 13% 23%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 13% 28%;
+    --input: 220 13% 23%;
+    --ring: 214 84% 56%;
 
-    --radius: 0.5rem;
+    /* Traffic status colors */
+    --traffic-free: 142 76% 36%;
+    --traffic-light: 45 93% 47%;
+    --traffic-moderate: 25 95% 53%;
+    --traffic-heavy: 0 84% 60%;
+
+    /* Map controls */
+    --map-control: 220 13% 16%;
+    --map-control-hover: 220 13% 23%;
+    
+    /* Glass effect for overlays */
+    --glass-bg: 220 13% 16% / 0.8;
+    --glass-border: 220 13% 28% / 0.3;
+
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
 

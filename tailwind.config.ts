@@ -52,6 +52,23 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				// Traffic monitoring colors
+				traffic: {
+					free: 'hsl(var(--traffic-free))',
+					light: 'hsl(var(--traffic-light))',
+					moderate: 'hsl(var(--traffic-moderate))',
+					heavy: 'hsl(var(--traffic-heavy))'
+				},
+				// Map control colors
+				'map-control': {
+					DEFAULT: 'hsl(var(--map-control))',
+					hover: 'hsl(var(--map-control-hover))'
+				},
+				// Glass effect
+				glass: {
+					bg: 'hsl(var(--glass-bg))',
+					border: 'hsl(var(--glass-border))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
