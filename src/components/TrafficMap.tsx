@@ -1,13 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Navigation, MapPin, AlertTriangle, Route } from 'lucide-react';
+import { Navigation, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import SearchInput from './SearchInput';
 
 interface TrafficMapProps {
   mapboxToken: string;
@@ -119,28 +117,33 @@ const TrafficMap: React.FC<TrafficMapProps> = ({ mapboxToken }) => {
   }, [mapboxToken, toast]);
 
   // Get routes with traffic data
-  const getRoutes = async (destination: string) => {
+  const getRoutes = async (destination: string, coordinates?: [number, number]) => {
     if (!userLocation || !destination) return;
 
     setIsLoading(true);
+    setDestination(destination);
     
     try {
-      // Geocode destination
-      const geocodeResponse = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(destination)}.json?access_token=${mapboxToken}&limit=1`
-      );
-      const geocodeData = await geocodeResponse.json();
+      let destCoords = coordinates;
       
-      if (!geocodeData.features.length) {
-        toast({
-          title: "Destination Not Found",
-          description: "Please try a different location.",
-          variant: "destructive"
-        });
-        return;
+      // If coordinates not provided, geocode the destination
+      if (!destCoords) {
+        const geocodeResponse = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(destination)}.json?access_token=${mapboxToken}&limit=1`
+        );
+        const geocodeData = await geocodeResponse.json();
+        
+        if (!geocodeData.features.length) {
+          toast({
+            title: "Destination Not Found",
+            description: "Please try a different location.",
+            variant: "destructive"
+          });
+          setIsLoading(false);
+          return;
+        }
+        destCoords = geocodeData.features[0].center;
       }
-
-      const destCoords = geocodeData.features[0].center;
       
       // Get multiple route alternatives with traffic
       const routeResponse = await fetch(
@@ -287,25 +290,11 @@ const TrafficMap: React.FC<TrafficMapProps> = ({ mapboxToken }) => {
       
       {/* Route input panel */}
       <Card className="absolute top-4 left-4 right-4 bg-glass-bg backdrop-blur-md border-glass-border p-4">
-        <div className="flex gap-2">
-          <div className="flex-1 flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-primary" />
-            <Input
-              placeholder="Enter destination..."
-              value={destination}
-              onChange={(e) => setDestination(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && getRoutes(destination)}
-              className="bg-background/50"
-            />
-          </div>
-          <Button 
-            onClick={() => getRoutes(destination)}
-            disabled={!destination || isLoading}
-            size="sm"
-          >
-            <Route className="h-4 w-4" />
-          </Button>
-        </div>
+        <SearchInput 
+          mapboxToken={mapboxToken}
+          onDestinationSelect={getRoutes}
+          isLoading={isLoading}
+        />
       </Card>
 
       {/* Route options */}
